@@ -88,7 +88,14 @@ func main() {
 	admin.Get("/status", adminHandler.GetStatus)
 	admin.Post("/logout", adminHandler.Logout)
 
-	// File routes will be added in Phase 3
+	// File routes
+	fileHandler := handlers.NewFileHandler(waClient, cfg)
+	files := api.Group("/files")
+	files.Post("/", fileHandler.Upload)
+	files.Get("/", fileHandler.List)
+	files.Get("/:id", fileHandler.Get)
+	files.Get("/:id/download", fileHandler.Download)
+	files.Delete("/:id", fileHandler.Delete)
 
 	// Start server in goroutine
 	go func() {
