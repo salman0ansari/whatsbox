@@ -12,8 +12,10 @@ import (
 	"github.com/salman0ansari/whatsbox/internal/config"
 	"github.com/salman0ansari/whatsbox/internal/database"
 	"github.com/salman0ansari/whatsbox/internal/handlers"
+	"github.com/salman0ansari/whatsbox/internal/jobs"
 	"github.com/salman0ansari/whatsbox/internal/logging"
 	"github.com/salman0ansari/whatsbox/internal/middleware"
+	"github.com/salman0ansari/whatsbox/internal/stats"
 	"github.com/salman0ansari/whatsbox/internal/whatsapp"
 	"go.uber.org/zap"
 )
@@ -55,6 +57,14 @@ func main() {
 	// Start auto-reconnect
 	waClient.AutoReconnect()
 
+	// Initialize stats collector
+	stats.Init()
+
+	// Start background job scheduler
+	scheduler := jobs.NewScheduler(cfg)
+	scheduler.Start()
+	defer scheduler.Stop()
+
 	// Create Fiber app
 	app := fiber.New(fiber.Config{
 		BodyLimit:             int(cfg.MaxUploadSize),
@@ -87,6 +97,12 @@ func main() {
 	admin.Get("/qr", adminHandler.GetQR)
 	admin.Get("/status", adminHandler.GetStatus)
 	admin.Post("/logout", adminHandler.Logout)
+
+	// Stats routes
+	statsHandler := handlers.NewStatsHandler()
+	admin.Get("/stats", statsHandler.GetStats)
+	admin.Get("/stats/hourly", statsHandler.GetHourlyStats)
+	admin.Get("/stats/daily", statsHandler.GetDailyStats)
 
 	// File routes
 	fileHandler := handlers.NewFileHandler(waClient, cfg)

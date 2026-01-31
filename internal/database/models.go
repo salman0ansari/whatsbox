@@ -283,3 +283,119 @@ func (r *AccessLogRepository) DeleteOld(before time.Time) (int64, error) {
 	}
 	return result.RowsAffected()
 }
+
+// StatsRepository handles stats database operations
+type StatsRepository struct{}
+
+func NewStatsRepository() *StatsRepository {
+	return &StatsRepository{}
+}
+
+// SaveHourly saves or updates hourly stats
+func (r *StatsRepository) SaveHourly(s *StatsHourly) error {
+	_, err := DB.Exec(`
+		INSERT INTO stats_hourly (hour, uploads, downloads, upload_bytes, download_bytes, 
+			failed_uploads, failed_downloads, requests)
+		VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+		ON CONFLICT(hour) DO UPDATE SET
+			uploads = uploads + excluded.uploads,
+			downloads = downloads + excluded.downloads,
+			upload_bytes = upload_bytes + excluded.upload_bytes,
+			download_bytes = download_bytes + excluded.download_bytes,
+			failed_uploads = failed_uploads + excluded.failed_uploads,
+			failed_downloads = failed_downloads + excluded.failed_downloads,
+			requests = requests + excluded.requests`,
+		s.Hour, s.Uploads, s.Downloads, s.UploadBytes, s.DownloadBytes,
+		s.FailedUploads, s.FailedDownloads, s.Requests)
+	return err
+}
+
+// GetHourlyStats retrieves hourly stats for a given time range
+func (r *StatsRepository) GetHourlyStats(start, end time.Time) ([]*StatsHourly, error) {
+	rows, err := DB.Query(`
+		SELECT hour, uploads, downloads, upload_bytes, download_bytes, 
+			failed_uploads, failed_downloads, requests
+		FROM stats_hourly
+		WHERE hour >= ? AND hour < ?
+		ORDER BY hour DESC`, start, end)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	var stats []*StatsHourly
+	for rows.Next() {
+		s := &StatsHourly{}
+		if err := rows.Scan(&s.Hour, &s.Uploads, &s.Downloads, &s.UploadBytes,
+			&s.DownloadBytes, &s.FailedUploads, &s.FailedDownloads, &s.Requests); err != nil {
+			return nil, err
+		}
+		stats = append(stats, s)
+	}
+	return stats, nil
+}
+
+// SaveDaily saves or updates daily stats
+func (r *StatsRepository) SaveDaily(s *StatsDaily) error {
+	_, err := DB.Exec(`
+		INSERT INTO stats_daily (date, uploads, downloads, upload_bytes, download_bytes)
+		VALUES (?, ?, ?, ?, ?)
+		ON CONFLICT(date) DO UPDATE SET
+			uploads = excluded.uploads,
+			downloads = excluded.downloads,
+			upload_bytes = excluded.upload_bytes,
+			download_bytes = excluded.download_bytes`,
+		s.Date, s.Uploads, s.Downloads, s.UploadBytes, s.DownloadBytes)
+	return err
+}
+
+// GetDailyStats retrieves daily stats for a given time range
+func (r *StatsRepository) GetDailyStats(start, end time.Time) ([]*StatsDaily, error) {
+	rows, err := DB.Query(`
+		SELECT date, uploads, downloads, upload_bytes, download_bytes
+		FROM stats_daily
+		WHERE date >= ? AND date < ?
+		ORDER BY date DESC`, start, end)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	var stats []*StatsDaily
+	for rows.Next() {
+		s := &StatsDaily{}
+		if err := rows.Scan(&s.Date, &s.Uploads, &s.Downloads, &s.UploadBytes, &s.DownloadBytes); err != nil {
+			return nil, err
+		}
+		stats = append(stats, s)
+	}
+	return stats, nil
+}
+
+// AggregateHourlyToDaily aggregates hourly stats to daily
+func (r *StatsRepository) AggregateHourlyToDaily(date time.Time) error {
+	startOfDay := date.Truncate(24 * time.Hour)
+	endOfDay := startOfDay.Add(24 * time.Hour)
+
+	_, err := DB.Exec(`
+		INSERT INTO stats_daily (date, uploads, downloads, upload_bytes, download_bytes)
+		SELECT ?, SUM(uploads), SUM(downloads), SUM(upload_bytes), SUM(download_bytes)
+		FROM stats_hourly
+		WHERE hour >= ? AND hour < ?
+		ON CONFLICT(date) DO UPDATE SET
+			uploads = excluded.uploads,
+			downloads = excluded.downloads,
+			upload_bytes = excluded.upload_bytes,
+			download_bytes = excluded.download_bytes`,
+		startOfDay, startOfDay, endOfDay)
+	return err
+}
+
+// DeleteOldHourly removes hourly stats older than the given time
+func (r *StatsRepository) DeleteOldHourly(before time.Time) (int64, error) {
+	result, err := DB.Exec(`DELETE FROM stats_hourly WHERE hour < ?`, before)
+	if err != nil {
+		return 0, err
+	}
+	return result.RowsAffected()
+}
