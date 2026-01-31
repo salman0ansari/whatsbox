@@ -1,6 +1,8 @@
 package config
 
 import (
+	"crypto/rand"
+	"encoding/hex"
 	"os"
 	"strconv"
 	"time"
@@ -43,6 +45,11 @@ type Config struct {
 
 	// Graceful shutdown
 	ShutdownTimeout time.Duration
+
+	// Admin auth
+	AdminPassword      string
+	AdminSessionSecret string
+	AdminSessionMaxAge int
 }
 
 func Load() *Config {
@@ -83,6 +90,11 @@ func Load() *Config {
 
 		// Graceful shutdown
 		ShutdownTimeout: time.Duration(getEnvInt("SHUTDOWN_TIMEOUT", 300)) * time.Second,
+
+		// Admin auth
+		AdminPassword:      getEnv("ADMIN_PASSWORD", ""),
+		AdminSessionSecret: getEnv("ADMIN_SESSION_SECRET", generateDefaultSecret()),
+		AdminSessionMaxAge: getEnvInt("ADMIN_SESSION_MAX_AGE", 86400), // 24 hours
 	}
 }
 
@@ -109,4 +121,13 @@ func getEnvInt64(key string, defaultValue int64) int64 {
 		}
 	}
 	return defaultValue
+}
+
+func generateDefaultSecret() string {
+	bytes := make([]byte, 32)
+	if _, err := rand.Read(bytes); err != nil {
+		// Fallback to a default if random generation fails
+		return "whatsbox-default-secret-change-in-production"
+	}
+	return hex.EncodeToString(bytes)
 }

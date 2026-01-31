@@ -95,15 +95,24 @@ func main() {
 	// Admin routes
 	adminHandler := handlers.NewAdminHandler(waClient)
 	admin := api.Group("/admin")
-	admin.Get("/qr", adminHandler.GetQR)
-	admin.Get("/status", adminHandler.GetStatus)
-	admin.Post("/logout", adminHandler.Logout)
 
-	// Stats routes
+	// Auth routes (no auth required)
+	admin.Post("/login", middleware.Login(cfg))
+	admin.Get("/me", middleware.CheckAuth(cfg))
+
+	// Protected admin routes
+	adminProtected := admin.Group("")
+	adminProtected.Use(middleware.AdminAuth(cfg))
+	adminProtected.Get("/qr", adminHandler.GetQR)
+	adminProtected.Get("/status", adminHandler.GetStatus)
+	adminProtected.Post("/logout", adminHandler.Logout)
+	adminProtected.Post("/logout-session", middleware.LogoutSession())
+
+	// Stats routes (protected)
 	statsHandler := handlers.NewStatsHandler()
-	admin.Get("/stats", statsHandler.GetStats)
-	admin.Get("/stats/hourly", statsHandler.GetHourlyStats)
-	admin.Get("/stats/daily", statsHandler.GetDailyStats)
+	adminProtected.Get("/stats", statsHandler.GetStats)
+	adminProtected.Get("/stats/hourly", statsHandler.GetHourlyStats)
+	adminProtected.Get("/stats/daily", statsHandler.GetDailyStats)
 
 	// File routes
 	fileHandler := handlers.NewFileHandler(waClient, cfg)
