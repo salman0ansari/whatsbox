@@ -14,6 +14,7 @@ import (
 	"github.com/salman0ansari/whatsbox/internal/handlers"
 	"github.com/salman0ansari/whatsbox/internal/logging"
 	"github.com/salman0ansari/whatsbox/internal/middleware"
+	"github.com/salman0ansari/whatsbox/internal/whatsapp"
 	"go.uber.org/zap"
 )
 
@@ -39,6 +40,21 @@ func main() {
 	}
 	defer database.Close()
 
+	// Setup WhatsApp client
+	waClient, err := whatsapp.NewClient(cfg)
+	if err != nil {
+		logging.Fatal("Failed to create WhatsApp client", zap.Error(err))
+	}
+	defer waClient.Close()
+
+	// Connect to WhatsApp if already logged in
+	if err := waClient.Connect(context.Background()); err != nil {
+		logging.Error("Failed to connect to WhatsApp", zap.Error(err))
+	}
+
+	// Start auto-reconnect
+	waClient.AutoReconnect()
+
 	// Create Fiber app
 	app := fiber.New(fiber.Config{
 		BodyLimit:             int(cfg.MaxUploadSize),
@@ -57,19 +73,22 @@ func main() {
 		ExposeHeaders: "Upload-Offset,Upload-Length,Tus-Version,Tus-Resumable,Tus-Max-Size,Tus-Extension,Location,X-Request-ID",
 	}))
 
-	// Health check placeholder function (will be updated when WhatsApp client is added)
-	waConnected := func() bool {
-		return false // Will be replaced in Phase 2
-	}
-
 	// Health handlers
-	healthHandler := handlers.NewHealthHandler(waConnected)
+	healthHandler := handlers.NewHealthHandler(waClient.IsConnected)
 	app.Get("/health", healthHandler.Health)
 	app.Get("/ready", healthHandler.Ready)
 
-	// API routes will be added in subsequent phases
+	// API routes
 	api := app.Group("/api")
-	_ = api // Placeholder
+
+	// Admin routes
+	adminHandler := handlers.NewAdminHandler(waClient)
+	admin := api.Group("/admin")
+	admin.Get("/qr", adminHandler.GetQR)
+	admin.Get("/status", adminHandler.GetStatus)
+	admin.Post("/logout", adminHandler.Logout)
+
+	// File routes will be added in Phase 3
 
 	// Start server in goroutine
 	go func() {
@@ -90,6 +109,9 @@ func main() {
 	// Create shutdown context with timeout
 	_, cancel := context.WithTimeout(context.Background(), cfg.ShutdownTimeout)
 	defer cancel()
+
+	// Disconnect WhatsApp
+	waClient.Disconnect()
 
 	// Shutdown Fiber
 	if err := app.ShutdownWithTimeout(cfg.ShutdownTimeout); err != nil {
