@@ -97,6 +97,15 @@ func main() {
 	files.Get("/:id/download", fileHandler.Download)
 	files.Delete("/:id", fileHandler.Delete)
 
+	// Tus chunked upload routes
+	tusHandler := handlers.NewTusHandler(waClient, cfg)
+	upload := api.Group("/upload")
+	upload.Options("/", tusHandler.Options)
+	upload.Post("/", tusHandler.Create)
+	upload.Head("/:id", tusHandler.Head)
+	upload.Patch("/:id", tusHandler.Patch)
+	upload.Delete("/:id", tusHandler.Delete)
+
 	// Start server in goroutine
 	go func() {
 		addr := fmt.Sprintf("%s:%s", cfg.Host, cfg.Port)
