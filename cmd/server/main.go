@@ -12,6 +12,7 @@ import (
 	"github.com/gofiber/fiber/v2/middleware/cors"
 	"github.com/salman0ansari/whatsbox/internal/config"
 	"github.com/salman0ansari/whatsbox/internal/database"
+	"github.com/salman0ansari/whatsbox/internal/frontend"
 	"github.com/salman0ansari/whatsbox/internal/handlers"
 	"github.com/salman0ansari/whatsbox/internal/jobs"
 	"github.com/salman0ansari/whatsbox/internal/logging"
@@ -131,6 +132,9 @@ func main() {
 	upload.Head("/:id", tusHandler.Head)
 	upload.Patch("/:id", tusHandler.Patch)
 	upload.Delete("/:id", tusHandler.Delete)
+
+	// Serve embedded frontend (SPA with fallback to index.html)
+	app.Use("/", frontend.Handler())
 
 	// Start server in goroutine
 	go func() {

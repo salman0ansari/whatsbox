@@ -45,3 +45,7 @@ tmp/
 # OS files
 .DS_Store
 Thumbs.db
+
+# Embedded frontend build (keep .gitkeep)
+internal/frontend/dist/*
+!internal/frontend/dist/.gitkeep

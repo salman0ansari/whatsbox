@@ -20,6 +20,10 @@ services:
       - MAX_EXPIRY_DAYS=30
       - SHORT_ID_LENGTH=6
       - SHUTDOWN_TIMEOUT=30s
+      # Admin authentication (required for admin panel)
+      - ADMIN_PASSWORD=${ADMIN_PASSWORD:-changeme}
+      # - ADMIN_SESSION_SECRET=${ADMIN_SESSION_SECRET:-} # Auto-generated if not set
+      # - ADMIN_SESSION_MAX_AGE=24h
     healthcheck:
       test: ["CMD", "wget", "-q", "--spider", "http://localhost:3000/health"]
       interval: 30s

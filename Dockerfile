@@ -1,4 +1,15 @@
-# Build stage
+# Frontend build stage
+FROM node:20-alpine AS frontend-builder
+
+WORKDIR /app/web
+
+COPY web/package*.json ./
+RUN npm ci
+
+COPY web/ ./
+RUN npm run build
+
+# Go build stage
 FROM golang:1.22-alpine AS builder
 
 RUN apk add --no-cache gcc musl-dev
@@ -9,6 +20,9 @@ COPY go.mod go.sum ./
 RUN go mod download
 
 COPY . .
+
+# Copy frontend build to embed location
+COPY --from=frontend-builder /app/web/dist ./internal/frontend/dist
 
 RUN CGO_ENABLED=1 GOOS=linux go build -a -ldflags '-linkmode external -extldflags "-static"' -o whatsbox ./cmd/server
 
