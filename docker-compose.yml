@@ -1,0 +1,31 @@
+services:
+  whatsbox:
+    build: .
+    container_name: whatsbox
+    restart: unless-stopped
+    ports:
+      - "3000:3000"
+    volumes:
+      - whatsbox_data:/app/data
+    environment:
+      - PORT=3000
+      - HOST=0.0.0.0
+      - DATABASE_PATH=/app/data/whatsbox.db
+      - WA_SESSION_PATH=/app/data/wa_session.db
+      - TEMP_DIR=/app/data/temp
+      - LOG_LEVEL=info
+      - LOG_FORMAT=json
+      - MAX_UPLOAD_SIZE=2147483648
+      - DEFAULT_EXPIRY_DAYS=30
+      - MAX_EXPIRY_DAYS=30
+      - SHORT_ID_LENGTH=6
+      - SHUTDOWN_TIMEOUT=30s
+    healthcheck:
+      test: ["CMD", "wget", "-q", "--spider", "http://localhost:3000/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 10s
+
+volumes:
+  whatsbox_data:

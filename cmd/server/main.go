@@ -6,6 +6,7 @@ import (
 	"os"
 	"os/signal"
 	"syscall"
+	"time"
 
 	"github.com/gofiber/fiber/v2"
 	"github.com/gofiber/fiber/v2/middleware/cors"
@@ -138,9 +139,23 @@ func main() {
 
 	logging.Info("Shutting down server...")
 
-	// Create shutdown context with timeout
-	_, cancel := context.WithTimeout(context.Background(), cfg.ShutdownTimeout)
-	defer cancel()
+	// Wait for active transfers to complete (with timeout)
+	collector := stats.Get()
+	waitStart := time.Now()
+	for {
+		active := collector.GetActiveTransfers()
+		if active == 0 {
+			break
+		}
+		if time.Since(waitStart) > cfg.ShutdownTimeout {
+			logging.Warn("Shutdown timeout reached with active transfers",
+				zap.Int64("active_transfers", active))
+			break
+		}
+		logging.Info("Waiting for active transfers to complete",
+			zap.Int64("active_transfers", active))
+		time.Sleep(1 * time.Second)
+	}
 
 	// Disconnect WhatsApp
 	waClient.Disconnect()
