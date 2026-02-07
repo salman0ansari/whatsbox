@@ -1,31 +1,51 @@
 import { useState } from 'react';
-import { ChevronDown, ChevronUp } from 'lucide-react';
-import { Input, Select, Card } from '@/components/ui';
+import { ChevronDown, ChevronUp, Upload } from 'lucide-react';
+import { Input, Select, Card, Button } from '@/components/ui';
 import { FileUploader } from '@/components/upload/FileUploader';
 import { UploadProgress } from '@/components/upload/UploadProgress';
 import { UploadSuccess } from '@/components/upload/UploadSuccess';
-import { useUpload, usePublicStatus } from '@/hooks';
+import { useUploadMultiple, usePublicStatus } from '@/hooks';
 import { EXPIRY_OPTIONS, DEFAULT_EXPIRY } from '@/lib/constants';
 import type { UploadOptions } from '@/types';
 import { cn } from '@/lib/utils';
 
 export default function Home() {
-  const { upload, progress, result, isUploading, isComplete, reset } = useUpload();
+  const { 
+    uploadFiles, 
+    progress, 
+    results, 
+    isUploading, 
+    isComplete, 
+    reset,
+    currentFileIndex,
+    totalFiles 
+  } = useUploadMultiple();
   const { data: status } = usePublicStatus();
   
   const [showAdvanced, setShowAdvanced] = useState(false);
+  const [selectedFiles, setSelectedFiles] = useState<File[]>([]);
   const [options, setOptions] = useState<UploadOptions>({
     expires_in: DEFAULT_EXPIRY,
   });
 
-  const handleFileDrop = async (files: File[]) => {
-    if (files.length > 0) {
-      await upload(files[0], options);
+  const handleFileDrop = (files: File[]) => {
+    setSelectedFiles((prev) => [...prev, ...files]);
+  };
+
+  const handleClearFiles = () => {
+    setSelectedFiles([]);
+  };
+
+  const handleUpload = async () => {
+    if (selectedFiles.length > 0) {
+      await uploadFiles(selectedFiles, options);
+      setSelectedFiles([]);
     }
   };
 
   const handleUploadAnother = () => {
     reset();
+    setSelectedFiles([]);
     setOptions({ expires_in: DEFAULT_EXPIRY });
     setShowAdvanced(false);
   };
@@ -33,10 +53,10 @@ export default function Home() {
   const isServiceReady = status?.connected;
 
   // Show success state
-  if (isComplete && result) {
+  if (isComplete && results.length > 0) {
     return (
       <div className="container mx-auto px-4 py-12 max-w-xl">
-        <UploadSuccess result={result} onUploadAnother={handleUploadAnother} />
+        <UploadSuccess results={results} onUploadAnother={handleUploadAnother} />
       </div>
     );
   }
@@ -45,7 +65,11 @@ export default function Home() {
   if (isUploading && progress) {
     return (
       <div className="container mx-auto px-4 py-12 max-w-xl">
-        <UploadProgress progress={progress} />
+        <UploadProgress 
+          progress={progress} 
+          currentFile={currentFileIndex + 1}
+          totalFiles={totalFiles}
+        />
       </div>
     );
   }
@@ -58,7 +82,7 @@ export default function Home() {
           Share Files Securely
         </h1>
         <p className="text-text-secondary">
-          Upload files up to 2GB. Files expire automatically after 30 days.
+          Upload files up to 2GB each. Files expire automatically after 30 days.
         </p>
       </div>
 
@@ -78,8 +102,23 @@ export default function Home() {
       <Card padding="lg" className="mb-4">
         <FileUploader
           onDrop={handleFileDrop}
-          disabled={!isServiceReady}
+          disabled={!isServiceReady || isUploading}
+          selectedFiles={selectedFiles}
+          onClearFiles={handleClearFiles}
         />
+        
+        {selectedFiles.length > 0 && (
+          <div className="mt-4 pt-4 border-t border-border">
+            <Button 
+              className="w-full" 
+              onClick={handleUpload}
+              disabled={!isServiceReady}
+            >
+              <Upload className="h-4 w-4 mr-2" />
+              Upload {selectedFiles.length} file{selectedFiles.length !== 1 ? 's' : ''}
+            </Button>
+          </div>
+        )}
       </Card>
 
       {/* Advanced options */}
@@ -104,7 +143,7 @@ export default function Home() {
         >
           <Input
             label="Description (optional)"
-            placeholder="Add a description for your file"
+            placeholder="Add a description for your files"
             value={options.description || ''}
             onChange={(e) => setOptions({ ...options, description: e.target.value })}
           />

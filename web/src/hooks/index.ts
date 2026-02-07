@@ -1,5 +1,6 @@
 export { useFiles, useFile, useDeleteFile } from './useFiles';
 export { useUpload } from './useUpload';
+export { useUploadMultiple } from './useUploadMultiple';
 export { 
   useAuth, 
   useLogin, 

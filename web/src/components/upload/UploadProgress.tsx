@@ -1,16 +1,19 @@
 import { File, Loader2 } from 'lucide-react';
-import { Card, Progress } from '@/components/ui';
+import { Card, Progress, Badge } from '@/components/ui';
 import { formatBytes, truncateFilename } from '@/lib/utils';
 import type { UploadProgress as UploadProgressType } from '@/types';
 
 export interface UploadProgressProps {
   progress: UploadProgressType;
+  currentFile?: number;
+  totalFiles?: number;
 }
 
-export function UploadProgress({ progress }: UploadProgressProps) {
+export function UploadProgress({ progress, currentFile = 1, totalFiles = 1 }: UploadProgressProps) {
   const { file, progress: percent, bytesUploaded, bytesTotal, status } = progress;
   
   const speed = bytesUploaded > 0 ? bytesUploaded / ((Date.now() - performance.now()) / 1000) : 0;
+  const isMultiple = totalFiles > 1;
 
   return (
     <Card padding="lg">
@@ -20,9 +23,16 @@ export function UploadProgress({ progress }: UploadProgressProps) {
         </div>
         
         <div className="flex-1 min-w-0">
-          <h3 className="font-medium text-text-primary truncate">
-            {truncateFilename(file.name, 40)}
-          </h3>
+          <div className="flex items-center gap-2">
+            <h3 className="font-medium text-text-primary truncate">
+              {truncateFilename(file.name, 40)}
+            </h3>
+            {isMultiple && (
+              <Badge variant="info" size="sm">
+                {currentFile} of {totalFiles}
+              </Badge>
+            )}
+          </div>
           
           <div className="mt-3">
             <Progress value={percent} size="md" />
