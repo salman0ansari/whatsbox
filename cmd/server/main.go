@@ -122,10 +122,13 @@ func main() {
 	fileHandler := handlers.NewFileHandler(waClient, cfg)
 	files := api.Group("/files")
 	files.Post("/", fileHandler.Upload)
-	files.Get("/", fileHandler.List)
 	files.Get("/:id", fileHandler.Get)
 	files.Get("/:id/download", fileHandler.Download)
-	files.Delete("/:id", fileHandler.Delete)
+
+	// Protected file routes (admin only)
+	filesProtected := files.Group("", middleware.AdminAuth(cfg))
+	filesProtected.Get("/", fileHandler.List)
+	filesProtected.Delete("/:id", fileHandler.Delete)
 
 	// Tus chunked upload routes
 	tusHandler := handlers.NewTusHandler(waClient, cfg)

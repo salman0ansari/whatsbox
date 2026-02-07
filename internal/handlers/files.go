@@ -72,6 +72,9 @@ func (h *FileHandler) Upload(c *fiber.Ctx) error {
 		})
 	}
 
+	// Sanitize filename to prevent path traversal
+	fileHeader.Filename = utils.SanitizeFilename(fileHeader.Filename)
+
 	// Check file size
 	if fileHeader.Size > h.cfg.MaxUploadSize {
 		return c.Status(fiber.StatusRequestEntityTooLarge).JSON(fiber.Map{
@@ -195,6 +198,7 @@ func (h *FileHandler) Upload(c *fiber.Ctx) error {
 		DirectPath:    uploadResp.DirectPath,
 		MediaKey:      uploadResp.MediaKey,
 		FileEncHash:   uploadResp.FileEncHash,
+		FileSHA256:    uploadResp.FileSHA256,
 		PasswordHash:  passwordHash,
 		MaxDownloads:  maxDownloads,
 		DownloadCount: 0,
@@ -322,14 +326,7 @@ func (h *FileHandler) Download(c *fiber.Ctx) error {
 		})
 	}
 
-	// Check download limit
-	if file.MaxDownloads.Valid && file.DownloadCount >= file.MaxDownloads.Int64 {
-		return c.Status(fiber.StatusGone).JSON(fiber.Map{
-			"error":         "download_limit_reached",
-			"message":       "This file has reached its maximum download count",
-			"max_downloads": file.MaxDownloads.Int64,
-		})
-	}
+	// Check download limit - will be validated atomically during download
 
 	// Check password if required
 	if file.PasswordHash.Valid {
@@ -375,7 +372,7 @@ func (h *FileHandler) Download(c *fiber.Ctx) error {
 		DirectPath:  file.DirectPath,
 		MediaKey:    file.MediaKey,
 		FileEncHash: file.FileEncHash,
-		FileSHA256:  nil, // We don't store the plaintext hash
+		FileSHA256:  file.FileSHA256,
 		FileLength:  uint64(file.FileSize),
 		MediaType:   whatsmeow.MediaDocument,
 	}
@@ -389,8 +386,15 @@ func (h *FileHandler) Download(c *fiber.Ctx) error {
 		})
 	}
 
-	// Increment download count
-	if err := h.fileRepo.IncrementDownloadCount(fileID); err != nil {
+	// Increment download count atomically
+	if err := h.fileRepo.IncrementDownloadCountAtomically(fileID); err != nil {
+		if err.Error() == "download limit reached" {
+			return c.Status(fiber.StatusGone).JSON(fiber.Map{
+				"error":         "download_limit_reached",
+				"message":       "This file has reached its maximum download count",
+				"max_downloads": file.MaxDownloads.Int64,
+			})
+		}
 		logging.Warn("Failed to increment download count", zap.Error(err), zap.String("file_id", fileID))
 	}
 

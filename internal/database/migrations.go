@@ -80,6 +80,9 @@ func migrate() error {
 		// Indexes for access_log
 		`CREATE INDEX IF NOT EXISTS idx_access_log_file_id ON access_log(file_id)`,
 		`CREATE INDEX IF NOT EXISTS idx_access_log_created_at ON access_log(created_at)`,
+
+		// Migration: Add file_sha256 column if it doesn't exist
+		`ALTER TABLE files ADD COLUMN file_sha256 BLOB`,
 	}
 
 	for _, migration := range migrations {

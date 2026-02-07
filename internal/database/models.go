@@ -2,6 +2,7 @@ package database
 
 import (
 	"database/sql"
+	"fmt"
 	"time"
 )
 
@@ -16,6 +17,7 @@ type File struct {
 	DirectPath    string
 	MediaKey      []byte
 	FileEncHash   []byte
+	FileSHA256    []byte
 	PasswordHash  sql.NullString
 	MaxDownloads  sql.NullInt64
 	DownloadCount int64
@@ -77,11 +79,11 @@ func NewFileRepository() *FileRepository {
 func (r *FileRepository) Create(f *File) error {
 	_, err := DB.Exec(`
 		INSERT INTO files (id, filename, mime_type, file_size, file_hash, description,
-			direct_path, media_key, file_enc_hash, password_hash, max_downloads,
+			direct_path, media_key, file_enc_hash, file_sha256, password_hash, max_downloads,
 			download_count, created_at, expires_at, status)
-		VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+		VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
 		f.ID, f.Filename, f.MimeType, f.FileSize, f.FileHash, f.Description,
-		f.DirectPath, f.MediaKey, f.FileEncHash, f.PasswordHash, f.MaxDownloads,
+		f.DirectPath, f.MediaKey, f.FileEncHash, f.FileSHA256, f.PasswordHash, f.MaxDownloads,
 		f.DownloadCount, f.CreatedAt, f.ExpiresAt, f.Status)
 	return err
 }
@@ -91,11 +93,11 @@ func (r *FileRepository) GetByID(id string) (*File, error) {
 	f := &File{}
 	err := DB.QueryRow(`
 		SELECT id, filename, mime_type, file_size, file_hash, description,
-			direct_path, media_key, file_enc_hash, password_hash, max_downloads,
+			direct_path, media_key, file_enc_hash, file_sha256, password_hash, max_downloads,
 			download_count, created_at, expires_at, status
 		FROM files WHERE id = ?`, id).Scan(
 		&f.ID, &f.Filename, &f.MimeType, &f.FileSize, &f.FileHash, &f.Description,
-		&f.DirectPath, &f.MediaKey, &f.FileEncHash, &f.PasswordHash, &f.MaxDownloads,
+		&f.DirectPath, &f.MediaKey, &f.FileEncHash, &f.FileSHA256, &f.PasswordHash, &f.MaxDownloads,
 		&f.DownloadCount, &f.CreatedAt, &f.ExpiresAt, &f.Status)
 	if err != nil {
 		return nil, err
@@ -108,11 +110,11 @@ func (r *FileRepository) GetByHash(hash string) (*File, error) {
 	f := &File{}
 	err := DB.QueryRow(`
 		SELECT id, filename, mime_type, file_size, file_hash, description,
-			direct_path, media_key, file_enc_hash, password_hash, max_downloads,
+			direct_path, media_key, file_enc_hash, file_sha256, password_hash, max_downloads,
 			download_count, created_at, expires_at, status
 		FROM files WHERE file_hash = ? AND status = 'active'`, hash).Scan(
 		&f.ID, &f.Filename, &f.MimeType, &f.FileSize, &f.FileHash, &f.Description,
-		&f.DirectPath, &f.MediaKey, &f.FileEncHash, &f.PasswordHash, &f.MaxDownloads,
+		&f.DirectPath, &f.MediaKey, &f.FileEncHash, &f.FileSHA256, &f.PasswordHash, &f.MaxDownloads,
 		&f.DownloadCount, &f.CreatedAt, &f.ExpiresAt, &f.Status)
 	if err != nil {
 		return nil, err
@@ -124,7 +126,7 @@ func (r *FileRepository) GetByHash(hash string) (*File, error) {
 func (r *FileRepository) List(limit, offset int) ([]*File, error) {
 	rows, err := DB.Query(`
 		SELECT id, filename, mime_type, file_size, file_hash, description,
-			direct_path, media_key, file_enc_hash, password_hash, max_downloads,
+			direct_path, media_key, file_enc_hash, file_sha256, password_hash, max_downloads,
 			download_count, created_at, expires_at, status
 		FROM files
 		ORDER BY created_at DESC
@@ -139,7 +141,7 @@ func (r *FileRepository) List(limit, offset int) ([]*File, error) {
 		f := &File{}
 		err := rows.Scan(
 			&f.ID, &f.Filename, &f.MimeType, &f.FileSize, &f.FileHash, &f.Description,
-			&f.DirectPath, &f.MediaKey, &f.FileEncHash, &f.PasswordHash, &f.MaxDownloads,
+			&f.DirectPath, &f.MediaKey, &f.FileEncHash, &f.FileSHA256, &f.PasswordHash, &f.MaxDownloads,
 			&f.DownloadCount, &f.CreatedAt, &f.ExpiresAt, &f.Status)
 		if err != nil {
 			return nil, err
@@ -149,10 +151,35 @@ func (r *FileRepository) List(limit, offset int) ([]*File, error) {
 	return files, nil
 }
 
-// IncrementDownloadCount increments the download counter
-func (r *FileRepository) IncrementDownloadCount(id string) error {
-	_, err := DB.Exec(`UPDATE files SET download_count = download_count + 1 WHERE id = ?`, id)
-	return err
+// IncrementDownloadCountAtomically increments the download counter and checks limit atomically
+// Returns error if download limit would be exceeded
+func (r *FileRepository) IncrementDownloadCountAtomically(id string) error {
+	tx, err := DB.Begin()
+	if err != nil {
+		return err
+	}
+	defer tx.Rollback()
+
+	// Get current download count and max downloads
+	var downloadCount int64
+	var maxDownloads sql.NullInt64
+	err = tx.QueryRow(`SELECT download_count, max_downloads FROM files WHERE id = ? AND status = 'active'`, id).Scan(&downloadCount, &maxDownloads)
+	if err != nil {
+		return err
+	}
+
+	// Check download limit
+	if maxDownloads.Valid && downloadCount >= maxDownloads.Int64 {
+		return fmt.Errorf("download limit reached")
+	}
+
+	// Increment count
+	_, err = tx.Exec(`UPDATE files SET download_count = download_count + 1 WHERE id = ?`, id)
+	if err != nil {
+		return err
+	}
+
+	return tx.Commit()
 }
 
 // UpdateStatus updates the file status

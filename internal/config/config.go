@@ -3,6 +3,7 @@ package config
 import (
 	"crypto/rand"
 	"encoding/hex"
+	"fmt"
 	"os"
 	"strconv"
 	"time"
@@ -126,8 +127,8 @@ func getEnvInt64(key string, defaultValue int64) int64 {
 func generateDefaultSecret() string {
 	bytes := make([]byte, 32)
 	if _, err := rand.Read(bytes); err != nil {
-		// Fallback to a default if random generation fails
-		return "whatsbox-default-secret-change-in-production"
+		// Fail hard on random generation failure - this is a security-critical operation
+		panic(fmt.Sprintf("Failed to generate secure session secret: %v", err))
 	}
 	return hex.EncodeToString(bytes)
 }

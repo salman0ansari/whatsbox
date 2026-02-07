@@ -86,9 +86,9 @@ func (h *TusHandler) Create(c *fiber.Ctx) error {
 
 	// Parse metadata
 	metadata := parseUploadMetadata(c.Get("Upload-Metadata"))
-	filename := metadata["filename"]
+	filename := utils.SanitizeFilename(metadata["filename"])
 	if filename == "" {
-		filename = "unknown"
+		filename = "unnamed_file"
 	}
 
 	// Generate upload ID
@@ -374,9 +374,9 @@ func (h *TusHandler) processCompletedUpload(uploadID string, upload *database.Up
 
 	// Parse metadata
 	metadata := parseUploadMetadata(upload.Metadata.String)
-	filename := metadata["filename"]
+	filename := utils.SanitizeFilename(metadata["filename"])
 	if filename == "" {
-		filename = "unknown"
+		filename = "unnamed_file"
 	}
 	description := metadata["description"]
 	password := metadata["password"]
@@ -446,6 +446,7 @@ func (h *TusHandler) processCompletedUpload(uploadID string, upload *database.Up
 		DirectPath:    uploadResp.DirectPath,
 		MediaKey:      uploadResp.MediaKey,
 		FileEncHash:   uploadResp.FileEncHash,
+		FileSHA256:    uploadResp.FileSHA256,
 		PasswordHash:  passwordHash,
 		MaxDownloads:  maxDownloads,
 		DownloadCount: 0,

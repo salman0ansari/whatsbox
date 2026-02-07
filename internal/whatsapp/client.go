@@ -18,7 +18,6 @@ import (
 	"go.mau.fi/whatsmeow/store/sqlstore"
 	waLog "go.mau.fi/whatsmeow/util/log"
 	"go.uber.org/zap"
-	"google.golang.org/protobuf/proto"
 )
 
 // Client wraps the whatsmeow client with additional functionality
@@ -290,9 +289,4 @@ func (c *Client) GetClient() *whatsmeow.Client {
 func (c *Client) Close() error {
 	c.Disconnect()
 	return c.container.Close()
-}
-
-// Helper to get proto string
-func protoString(s string) *string {
-	return proto.String(s)
 }

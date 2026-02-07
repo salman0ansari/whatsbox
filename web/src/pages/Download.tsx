@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { useParams } from '@tanstack/react-router';
 import { Download as DownloadIcon, Lock, AlertCircle, CheckCircle } from 'lucide-react';
 import { Card, Button, Input, Spinner } from '@/components/ui';
@@ -17,14 +17,7 @@ export default function Download() {
   const [downloading, setDownloading] = useState(false);
   const [downloadStarted, setDownloadStarted] = useState(false);
 
-  // Auto-download for non-password-protected files
-  useEffect(() => {
-    if (file && !file.password_protected && file.status === 'active' && !downloadStarted) {
-      triggerDownload();
-    }
-  }, [file, downloadStarted]);
-
-  const triggerDownload = async (pwd?: string) => {
+  const triggerDownload = useCallback(async (pwd?: string) => {
     if (!file) return;
     
     setDownloading(true);
@@ -62,7 +55,14 @@ export default function Download() {
     } finally {
       setDownloading(false);
     }
-  };
+  }, [file]);
+
+  // Auto-download for non-password-protected files
+  useEffect(() => {
+    if (file && !file.password_protected && file.status === 'active' && !downloadStarted) {
+      triggerDownload();
+    }
+  }, [file, downloadStarted, triggerDownload]);
 
   const handlePasswordSubmit = (e: React.FormEvent) => {
     e.preventDefault();

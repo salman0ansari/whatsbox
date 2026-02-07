@@ -4,8 +4,9 @@ import (
 	"crypto/rand"
 	"crypto/sha256"
 	"encoding/hex"
-	"io"
 	"math/big"
+	"path/filepath"
+	"strings"
 
 	"golang.org/x/crypto/bcrypt"
 )
@@ -35,15 +36,6 @@ func HashFile(data []byte) string {
 	return hex.EncodeToString(hash[:])
 }
 
-// HashFileReader computes SHA256 hash from a reader and returns hex string
-func HashFileReader(r io.Reader) (string, error) {
-	hash := sha256.New()
-	if _, err := io.Copy(hash, r); err != nil {
-		return "", err
-	}
-	return hex.EncodeToString(hash.Sum(nil)), nil
-}
-
 // HashPassword hashes a password using bcrypt
 func HashPassword(password string) (string, error) {
 	bytes, err := bcrypt.GenerateFromPassword([]byte(password), bcrypt.DefaultCost)
@@ -54,4 +46,24 @@ func HashPassword(password string) (string, error) {
 func CheckPassword(password, hash string) bool {
 	err := bcrypt.CompareHashAndPassword([]byte(hash), []byte(password))
 	return err == nil
+}
+
+// SanitizeFilename removes path traversal sequences and dangerous characters from filenames
+func SanitizeFilename(filename string) string {
+	// Get the base name only (removes any path components)
+	filename = filepath.Base(filename)
+
+	// Remove any null bytes
+	filename = strings.ReplaceAll(filename, "\x00", "")
+
+	// Remove leading dots (hidden files) and trailing spaces
+	filename = strings.TrimLeft(filename, ".")
+	filename = strings.TrimSpace(filename)
+
+	// If filename is empty after sanitization, provide a default
+	if filename == "" {
+		filename = "unnamed_file"
+	}
+
+	return filename
 }
