@@ -4,11 +4,11 @@ import {
   Trash2, 
   Copy, 
   Check,
-  File,
   ChevronLeft,
   ChevronRight,
   Lock,
-  Files as FilesIcon
+  Files as FilesIcon,
+  Eye
 } from 'lucide-react';
 import { 
   Card, 
@@ -27,7 +27,9 @@ import {
   copyToClipboard,
   truncateFilename
 } from '@/lib/utils';
+import { FileTypeIcon, FilePreviewModal } from '@/components/files/FilePreview';
 import { toast } from 'sonner';
+import type { FileItem } from '@/types';
 
 export default function AdminFiles() {
   const [page, setPage] = useState(1);
@@ -35,6 +37,7 @@ export default function AdminFiles() {
   const [copiedId, setCopiedId] = useState<string | null>(null);
   const [deleteModalOpen, setDeleteModalOpen] = useState(false);
   const [fileToDelete, setFileToDelete] = useState<string | null>(null);
+  const [previewFile, setPreviewFile] = useState<FileItem | null>(null);
 
   const { data, isLoading } = useFiles({ page, per_page: 10 });
   const deleteMutation = useDeleteFile();
@@ -61,6 +64,10 @@ export default function AdminFiles() {
       setDeleteModalOpen(false);
       setFileToDelete(null);
     }
+  };
+
+  const handlePreview = (file: FileItem) => {
+    setPreviewFile(file);
   };
 
   // Filter files by search
@@ -112,17 +119,24 @@ export default function AdminFiles() {
       ) : (
         <div className="space-y-3">
           {filteredFiles.map((file) => (
-            <Card key={file.id} padding="md">
+            <Card key={file.id} padding="md" className="group">
               <div className="flex items-center gap-4">
-                {/* Icon */}
-                <div className="w-10 h-10 rounded-lg bg-surface-hover flex items-center justify-center flex-shrink-0">
-                  <File className="h-5 w-5 text-text-secondary" />
+                {/* File Type Icon / Thumbnail */}
+                <div 
+                  className="cursor-pointer hover:opacity-80 transition-opacity"
+                  onClick={() => handlePreview(file)}
+                  title="Click to preview"
+                >
+                  <FileTypeIcon file={file} size="md" />
                 </div>
 
                 {/* Info */}
                 <div className="flex-1 min-w-0">
                   <div className="flex items-center gap-2">
-                    <p className="font-medium text-text-primary truncate">
+                    <p 
+                      className="font-medium text-text-primary truncate cursor-pointer hover:text-accent transition-colors"
+                      onClick={() => handlePreview(file)}
+                    >
                       {truncateFilename(file.filename, 40)}
                     </p>
                     {file.password_protected && (
@@ -146,7 +160,15 @@ export default function AdminFiles() {
                 </Badge>
 
                 {/* Actions */}
-                <div className="flex items-center gap-2">
+                <div className="flex items-center gap-1">
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={() => handlePreview(file)}
+                    title="Preview file"
+                  >
+                    <Eye className="h-4 w-4" />
+                  </Button>
                   <Button
                     variant="ghost"
                     size="sm"
@@ -222,6 +244,13 @@ export default function AdminFiles() {
           </Button>
         </div>
       </Modal>
+
+      {/* File Preview Modal */}
+      <FilePreviewModal
+        file={previewFile}
+        isOpen={!!previewFile}
+        onClose={() => setPreviewFile(null)}
+      />
     </div>
   );
 }
