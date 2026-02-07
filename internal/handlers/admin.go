@@ -31,8 +31,8 @@ func (h *AdminHandler) GetQR(c *fiber.Ctx) error {
 		})
 	}
 
-	ctx, cancel := context.WithTimeout(c.Context(), 60*time.Second)
-	defer cancel()
+	// Keep QR pairing session alive beyond this HTTP request.
+	ctx, _ := context.WithTimeout(context.Background(), 2*time.Minute)
 
 	qr, err := h.waClient.GetQR(ctx)
 	if err != nil {

@@ -162,7 +162,11 @@ func (c *Client) GetQRChannel(ctx context.Context) (<-chan QRCode, error) {
 	c.qrCancel = cancel
 	c.mu.Unlock()
 
-	qrChan, _ := c.client.GetQRChannel(qrCtx)
+	qrChan, err := c.client.GetQRChannel(qrCtx)
+	if err != nil {
+		cancel()
+		return nil, fmt.Errorf("failed to get QR channel: %w", err)
+	}
 	resultChan := make(chan QRCode, 1)
 
 	go func() {
@@ -195,7 +199,7 @@ func (c *Client) GetQRChannel(ctx context.Context) (<-chan QRCode, error) {
 	}()
 
 	// Start connection to generate QR
-	err := c.client.Connect()
+	err = c.client.Connect()
 	if err != nil {
 		cancel()
 		return nil, fmt.Errorf("failed to connect for QR: %w", err)
@@ -207,9 +211,7 @@ func (c *Client) GetQRChannel(ctx context.Context) (<-chan QRCode, error) {
 // GetQR returns a single QR code for login with caching
 func (c *Client) GetQR(ctx context.Context) (*QRCode, error) {
 	c.mu.Lock()
-	defer c.mu.Unlock()
-
-	// Check if we have a cached QR code that's still valid
+	// Check if we have a cached QR code that's still valid.
 	if c.cachedQR != nil && time.Since(c.cachedQRTime) < time.Duration(c.cachedQR.Timeout)*time.Second {
 		logging.Debug("Returning cached QR code")
 		// Update remaining timeout
@@ -220,24 +222,35 @@ func (c *Client) GetQR(ctx context.Context) (*QRCode, error) {
 			remainingTimeout = 0
 		}
 		qr.Timeout = remainingTimeout
+		c.mu.Unlock()
 		return &qr, nil
 	}
 
-	// If we're already generating a QR code, wait for it
+	// If we're already generating a QR code, wait for it.
 	if c.qrGenerating {
 		c.mu.Unlock()
-		// Wait up to 10 seconds for generation to complete
-		for i := 0; i < 100; i++ {
-			time.Sleep(100 * time.Millisecond)
-			c.mu.RLock()
-			if !c.qrGenerating && c.cachedQR != nil {
-				qr := *c.cachedQR
+
+		ticker := time.NewTicker(100 * time.Millisecond)
+		defer ticker.Stop()
+		timeout := time.NewTimer(10 * time.Second)
+		defer timeout.Stop()
+
+		for {
+			select {
+			case <-ctx.Done():
+				return nil, ctx.Err()
+			case <-timeout.C:
+				return nil, fmt.Errorf("timeout waiting for QR code generation")
+			case <-ticker.C:
+				c.mu.RLock()
+				if !c.qrGenerating && c.cachedQR != nil {
+					qr := *c.cachedQR
+					c.mu.RUnlock()
+					return &qr, nil
+				}
 				c.mu.RUnlock()
-				return &qr, nil
 			}
-			c.mu.RUnlock()
 		}
-		return nil, fmt.Errorf("timeout waiting for QR code generation")
 	}
 
 	// Start generating new QR code
