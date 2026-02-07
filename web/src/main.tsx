@@ -5,6 +5,8 @@ import { RouterProvider } from '@tanstack/react-router';
 import { router } from './routes';
 import './index.css';
 
+console.log('WhatsBox: main.tsx loaded');
+
 const queryClient = new QueryClient({
   defaultOptions: {
     queries: {
@@ -15,10 +17,16 @@ const queryClient = new QueryClient({
   },
 });
 
-createRoot(document.getElementById('root')!).render(
-  <StrictMode>
-    <QueryClientProvider client={queryClient}>
-      <RouterProvider router={router} />
-    </QueryClientProvider>
-  </StrictMode>
-);
+const rootElement = document.getElementById('root');
+console.log('WhatsBox: root element', rootElement);
+
+if (rootElement) {
+  createRoot(rootElement).render(
+    <StrictMode>
+      <QueryClientProvider client={queryClient}>
+        <RouterProvider router={router} />
+      </QueryClientProvider>
+    </StrictMode>
+  );
+  console.log('WhatsBox: React rendered');
+}

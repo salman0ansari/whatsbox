@@ -57,7 +57,6 @@ const adminLoginRoute = createRoute({
 // Admin layout route with auth check
 const adminLayout = createRoute({
   getParentRoute: () => rootRoute,
-  id: 'admin-layout',
   path: '/admin',
   component: () => (
     <AdminLayout>

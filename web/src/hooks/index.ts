@@ -3,7 +3,8 @@ export { useUpload } from './useUpload';
 export { 
   useAuth, 
   useLogin, 
-  useLogoutSession, 
+  useLogoutSession,
+  usePublicStatus,
   useStatus, 
   useQRCode, 
   useLogoutWhatsApp,

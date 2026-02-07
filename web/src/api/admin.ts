@@ -23,7 +23,13 @@ export async function checkAuth(): Promise<{ authenticated: boolean }> {
   return data;
 }
 
-// Status endpoints
+// Public status endpoint (no auth required)
+export async function getPublicStatus(): Promise<{ connected: boolean }> {
+  const { data } = await apiClient.get<{ connected: boolean }>('/status');
+  return data;
+}
+
+// Admin status endpoints (auth required)
 export async function getStatus(): Promise<ConnectionStatus> {
   const { data } = await apiClient.get<ConnectionStatus>('/admin/status');
   return data;
@@ -45,15 +51,15 @@ export async function getStats(): Promise<Stats> {
 }
 
 export async function getHourlyStats(hours = 24): Promise<HourlyStats[]> {
-  const { data } = await apiClient.get<HourlyStats[]>('/admin/stats/hourly', {
+  const { data } = await apiClient.get<{ data: HourlyStats[] }>('/admin/stats/hourly', {
     params: { hours },
   });
-  return data;
+  return data.data;
 }
 
 export async function getDailyStats(days = 30): Promise<DailyStats[]> {
-  const { data } = await apiClient.get<DailyStats[]>('/admin/stats/daily', {
+  const { data } = await apiClient.get<{ data: DailyStats[] }>('/admin/stats/daily', {
     params: { days },
   });
-  return data;
+  return data.data;
 }

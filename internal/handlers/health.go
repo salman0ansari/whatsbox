@@ -42,3 +42,15 @@ func (h *HealthHandler) Ready(c *fiber.Ctx) error {
 		"whatsapp": "connected",
 	})
 }
+
+// Status returns public connection status (for frontend)
+func (h *HealthHandler) Status(c *fiber.Ctx) error {
+	waConnected := false
+	if h.waConnected != nil {
+		waConnected = h.waConnected()
+	}
+
+	return c.JSON(fiber.Map{
+		"connected": waConnected,
+	})
+}

@@ -93,6 +93,9 @@ func main() {
 	// API routes
 	api := app.Group("/api")
 
+	// Public status endpoint (for frontend header)
+	api.Get("/status", healthHandler.Status)
+
 	// Admin routes
 	adminHandler := handlers.NewAdminHandler(waClient)
 	admin := api.Group("/admin")

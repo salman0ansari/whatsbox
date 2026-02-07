@@ -4,14 +4,14 @@ import { Input, Select, Card } from '@/components/ui';
 import { FileUploader } from '@/components/upload/FileUploader';
 import { UploadProgress } from '@/components/upload/UploadProgress';
 import { UploadSuccess } from '@/components/upload/UploadSuccess';
-import { useUpload, useStatus } from '@/hooks';
+import { useUpload, usePublicStatus } from '@/hooks';
 import { EXPIRY_OPTIONS, DEFAULT_EXPIRY } from '@/lib/constants';
 import type { UploadOptions } from '@/types';
 import { cn } from '@/lib/utils';
 
 export default function Home() {
   const { upload, progress, result, isUploading, isComplete, reset } = useUpload();
-  const { data: status } = useStatus();
+  const { data: status } = usePublicStatus();
   
   const [showAdvanced, setShowAdvanced] = useState(false);
   const [options, setOptions] = useState<UploadOptions>({
@@ -30,7 +30,7 @@ export default function Home() {
     setShowAdvanced(false);
   };
 
-  const isServiceReady = status?.connected && status?.logged_in;
+  const isServiceReady = status?.connected;
 
   // Show success state
   if (isComplete && result) {

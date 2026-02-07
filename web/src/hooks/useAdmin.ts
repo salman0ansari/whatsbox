@@ -5,6 +5,7 @@ import {
   login,
   logoutSession,
   checkAuth,
+  getPublicStatus,
   getStatus,
   getQRCode,
   logoutWhatsApp,
@@ -58,7 +59,17 @@ export function useLogoutSession() {
   });
 }
 
-// Status hooks
+// Public status hook (no auth required, for public header)
+export function usePublicStatus() {
+  return useQuery({
+    queryKey: ['publicStatus'],
+    queryFn: getPublicStatus,
+    refetchInterval: 30000, // Refetch every 30 seconds
+    retry: 1,
+  });
+}
+
+// Admin status hooks (auth required)
 export function useStatus() {
   return useQuery({
     queryKey: ['status'],

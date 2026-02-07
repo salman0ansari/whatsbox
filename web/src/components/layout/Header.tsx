@@ -1,7 +1,7 @@
 import { Link } from '@tanstack/react-router';
 import { Box, Settings } from 'lucide-react';
 import { cn } from '@/lib/utils';
-import { useStatus } from '@/hooks/useAdmin';
+import { usePublicStatus } from '@/hooks/useAdmin';
 
 export interface HeaderProps {
   showAdminLink?: boolean;
@@ -9,7 +9,7 @@ export interface HeaderProps {
 }
 
 export function Header({ showAdminLink = true, className }: HeaderProps) {
-  const { data: status } = useStatus();
+  const { data: status } = usePublicStatus();
 
   return (
     <header className={cn('border-b border-border bg-background/80 backdrop-blur-sm sticky top-0 z-40', className)}>
