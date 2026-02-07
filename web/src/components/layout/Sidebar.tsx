@@ -11,7 +11,11 @@ const navItems = [
   { to: '/admin/settings', icon: Settings, label: 'Settings', exact: false },
 ];
 
-export function Sidebar() {
+interface SidebarProps {
+  className?: string;
+}
+
+export function Sidebar({ className }: SidebarProps) {
   const location = useLocation();
   const { data: status } = useStatus();
   const logoutMutation = useLogoutSession();
@@ -24,7 +28,7 @@ export function Sidebar() {
   };
 
   return (
-    <aside className="w-64 border-r border-border bg-surface min-h-screen flex flex-col">
+    <aside className={cn("w-64 border-r border-border bg-surface min-h-screen flex flex-col", className)}>
       {/* Logo */}
       <div className="h-16 border-b border-border flex items-center px-4">
         <Link to="/" className="flex items-center gap-2 hover:opacity-80 transition-opacity">
