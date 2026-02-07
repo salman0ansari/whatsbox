@@ -78,34 +78,18 @@ export function FileTypeIcon({ file, size = 'md', className }: FilePreviewProps)
     lg: 'h-7 w-7',
   };
   
-  const isImage = fileType === 'image';
-  
   return (
     <div
       className={cn(
-        'rounded-lg flex items-center justify-center flex-shrink-0 overflow-hidden',
+        'rounded-lg flex items-center justify-center flex-shrink-0',
         sizeClasses[size],
-        !isImage && getFileColor(fileType),
+        getFileColor(fileType),
         className
       )}
     >
-      {isImage ? (
-        <img
-          src={`/api/files/${file.id}/download`}
-          alt={file.filename}
-          className="w-full h-full object-cover"
-          loading="lazy"
-          onError={(e) => {
-            // Fallback to icon if image fails to load
-            e.currentTarget.style.display = 'none';
-            e.currentTarget.parentElement?.classList.add(...getFileColor('image').split(' '));
-          }}
-        />
-      ) : (
-        <span className={iconSizes[size]}>
-          {getFileIcon(fileType)}
-        </span>
-      )}
+      <span className={iconSizes[size]}>
+        {getFileIcon(fileType)}
+      </span>
     </div>
   );
 }
