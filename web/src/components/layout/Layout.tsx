@@ -8,7 +8,7 @@ export interface LayoutProps {
   showAdminLink?: boolean;
 }
 
-export function Layout({ children, showHeader = true, showAdminLink = true }: LayoutProps) {
+export function Layout({ children, showHeader = true, showAdminLink = false }: LayoutProps) {
   return (
     <div className="min-h-screen bg-background">
       {showHeader && <Header showAdminLink={showAdminLink} />}
