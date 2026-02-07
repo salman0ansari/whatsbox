@@ -18,7 +18,6 @@ import (
 	"github.com/salman0ansari/whatsbox/internal/logging"
 	"github.com/salman0ansari/whatsbox/internal/utils"
 	"github.com/salman0ansari/whatsbox/internal/whatsapp"
-	"go.mau.fi/whatsmeow"
 	"go.uber.org/zap"
 )
 
@@ -408,11 +407,14 @@ func (h *TusHandler) processCompletedUpload(uploadID string, upload *database.Up
 		mimeType = "application/octet-stream"
 	}
 
+	// Get correct media type for WhatsApp
+	mediaType := utils.GetMediaType(mimeType)
+
 	// Upload to WhatsApp
 	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Minute)
 	defer cancel()
 
-	uploadResp, err := h.waClient.Upload(ctx, fileData, whatsmeow.MediaDocument)
+	uploadResp, err := h.waClient.Upload(ctx, fileData, mediaType)
 	if err != nil {
 		logging.Error("Failed to upload to WhatsApp", zap.Error(err), zap.String("upload_id", uploadID))
 		return

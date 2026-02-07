@@ -8,6 +8,7 @@ import (
 	"path/filepath"
 	"strings"
 
+	"go.mau.fi/whatsmeow"
 	"golang.org/x/crypto/bcrypt"
 )
 
@@ -66,4 +67,18 @@ func SanitizeFilename(filename string) string {
 	}
 
 	return filename
+}
+
+// GetMediaType returns the appropriate whatsmeow.MediaType based on the mime type
+func GetMediaType(mimeType string) whatsmeow.MediaType {
+	if strings.HasPrefix(mimeType, "image/") {
+		return whatsmeow.MediaImage
+	}
+	if strings.HasPrefix(mimeType, "video/") {
+		return whatsmeow.MediaVideo
+	}
+	if strings.HasPrefix(mimeType, "audio/") {
+		return whatsmeow.MediaAudio
+	}
+	return whatsmeow.MediaDocument
 }

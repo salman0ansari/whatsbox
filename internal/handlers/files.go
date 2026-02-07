@@ -14,7 +14,6 @@ import (
 	"github.com/salman0ansari/whatsbox/internal/logging"
 	"github.com/salman0ansari/whatsbox/internal/utils"
 	"github.com/salman0ansari/whatsbox/internal/whatsapp"
-	"go.mau.fi/whatsmeow"
 	"go.uber.org/zap"
 )
 
@@ -157,11 +156,14 @@ func (h *FileHandler) Upload(c *fiber.Ctx) error {
 		}
 	}
 
+	// Get correct media type for WhatsApp
+	mediaType := utils.GetMediaType(mimeType)
+
 	// Upload to WhatsApp
 	ctx, cancel := context.WithTimeout(c.Context(), 5*time.Minute)
 	defer cancel()
 
-	uploadResp, err := h.waClient.Upload(ctx, fileData, whatsmeow.MediaDocument)
+	uploadResp, err := h.waClient.Upload(ctx, fileData, mediaType)
 	if err != nil {
 		logging.Error("Failed to upload to WhatsApp", zap.Error(err))
 		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{
@@ -361,13 +363,16 @@ func (h *FileHandler) Download(c *fiber.Ctx) error {
 	ctx, cancel := context.WithTimeout(c.Context(), 5*time.Minute)
 	defer cancel()
 
+	// Get correct media type for WhatsApp
+	mediaType := utils.GetMediaType(file.MimeType)
+
 	downloadReq := &whatsapp.DownloadRequest{
 		DirectPath:  file.DirectPath,
 		MediaKey:    file.MediaKey,
 		FileEncHash: file.FileEncHash,
 		FileSHA256:  file.FileSHA256,
 		FileLength:  uint64(file.FileSize),
-		MediaType:   whatsmeow.MediaDocument,
+		MediaType:   mediaType,
 	}
 
 	data, err := h.waClient.Download(ctx, downloadReq)
