@@ -104,15 +104,8 @@ func (h *FileHandler) Upload(c *fiber.Ctx) error {
 		})
 	}
 
-	// Calculate file hash for deduplication
+	// Calculate file hash for tracking purposes
 	fileHash := utils.HashFile(fileData)
-
-	// Check for existing file with same hash
-	existingFile, err := h.fileRepo.GetByHash(fileHash)
-	if err == nil && existingFile != nil {
-		// File already exists, return it
-		return c.Status(fiber.StatusOK).JSON(h.toFileResponse(existingFile, true))
-	}
 
 	// Get optional metadata from form
 	description := c.FormValue("description", "")

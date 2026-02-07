@@ -10,18 +10,18 @@ import type { UploadOptions } from '@/types';
 import { cn } from '@/lib/utils';
 
 export default function Home() {
-  const { 
-    uploadFiles, 
-    progress, 
-    results, 
-    isUploading, 
-    isComplete, 
+  const {
+    uploadFiles,
+    progress,
+    results,
+    isUploading,
+    isComplete,
     reset,
     currentFileIndex,
-    totalFiles 
+    totalFiles
   } = useUploadMultiple();
   const { data: status } = usePublicStatus();
-  
+
   const [showAdvanced, setShowAdvanced] = useState(false);
   const [selectedFiles, setSelectedFiles] = useState<File[]>([]);
   const [options, setOptions] = useState<UploadOptions>({
@@ -40,6 +40,7 @@ export default function Home() {
     if (selectedFiles.length > 0) {
       await uploadFiles(selectedFiles, options);
       setSelectedFiles([]);
+      setOptions({ expires_in: DEFAULT_EXPIRY });
     }
   };
 
@@ -65,8 +66,8 @@ export default function Home() {
   if (isUploading && progress) {
     return (
       <div className="container mx-auto px-4 py-12 max-w-xl">
-        <UploadProgress 
-          progress={progress} 
+        <UploadProgress
+          progress={progress}
           currentFile={currentFileIndex + 1}
           totalFiles={totalFiles}
         />
@@ -106,11 +107,11 @@ export default function Home() {
           selectedFiles={selectedFiles}
           onClearFiles={handleClearFiles}
         />
-        
+
         {selectedFiles.length > 0 && (
           <div className="mt-4 pt-4 border-t border-border">
-            <Button 
-              className="w-full" 
+            <Button
+              className="w-full"
               onClick={handleUpload}
               disabled={!isServiceReady}
             >
@@ -134,7 +135,7 @@ export default function Home() {
             <ChevronDown className="h-4 w-4" />
           )}
         </button>
-        
+
         <div
           className={cn(
             'px-4 pb-4 space-y-4 transition-all duration-200',
@@ -144,25 +145,27 @@ export default function Home() {
           <Input
             label="Description (optional)"
             placeholder="Add a description for your files"
+            autoComplete="new-password"
             value={options.description || ''}
             onChange={(e) => setOptions({ ...options, description: e.target.value })}
           />
-          
+
           <Input
             label="Password (optional)"
             type="password"
+            autoComplete="new-password"
             placeholder="Protect with a password"
             value={options.password || ''}
             onChange={(e) => setOptions({ ...options, password: e.target.value })}
           />
-          
+
           <Select
             label="Expires in"
             options={EXPIRY_OPTIONS.map((o) => ({ label: o.label, value: o.value }))}
             value={options.expires_in || DEFAULT_EXPIRY}
             onChange={(e) => setOptions({ ...options, expires_in: Number(e.target.value) })}
           />
-          
+
           <Input
             label="Max downloads (optional)"
             type="number"

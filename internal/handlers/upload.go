@@ -359,18 +359,8 @@ func (h *TusHandler) processCompletedUpload(uploadID string, upload *database.Up
 		return
 	}
 
-	// Calculate hash
+	// Calculate hash for tracking purposes
 	fileHash := utils.HashFile(fileData)
-
-	// Check for duplicate
-	existingFile, err := h.fileRepo.GetByHash(fileHash)
-	if err == nil && existingFile != nil {
-		logging.Info("Duplicate file detected during chunked upload",
-			zap.String("upload_id", uploadID),
-			zap.String("existing_file_id", existingFile.ID),
-		)
-		return
-	}
 
 	// Parse metadata
 	metadata := parseUploadMetadata(upload.Metadata.String)
