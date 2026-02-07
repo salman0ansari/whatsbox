@@ -7,6 +7,8 @@ import (
 	"os"
 	"strconv"
 	"time"
+
+	"github.com/joho/godotenv"
 )
 
 type Config struct {
@@ -54,6 +56,9 @@ type Config struct {
 }
 
 func Load() *Config {
+	// Load .env file if it exists (ignore error if file doesn't exist)
+	_ = godotenv.Load()
+
 	return &Config{
 		// Server
 		Port: getEnv("PORT", "3000"),
