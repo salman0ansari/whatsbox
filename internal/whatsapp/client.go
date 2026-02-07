@@ -33,6 +33,11 @@ type Client struct {
 
 	qrChan   chan string
 	qrCancel context.CancelFunc
+
+	// QR code caching to prevent excessive reconnections
+	cachedQR     *QRCode
+	cachedQRTime time.Time
+	qrGenerating bool
 }
 
 // Status represents the WhatsApp connection status
@@ -199,8 +204,52 @@ func (c *Client) GetQRChannel(ctx context.Context) (<-chan QRCode, error) {
 	return resultChan, nil
 }
 
-// GetQR returns a single QR code for login (convenience method)
+// GetQR returns a single QR code for login with caching
 func (c *Client) GetQR(ctx context.Context) (*QRCode, error) {
+	c.mu.Lock()
+	defer c.mu.Unlock()
+
+	// Check if we have a cached QR code that's still valid
+	if c.cachedQR != nil && time.Since(c.cachedQRTime) < time.Duration(c.cachedQR.Timeout)*time.Second {
+		logging.Debug("Returning cached QR code")
+		// Update remaining timeout
+		qr := *c.cachedQR
+		elapsed := time.Since(c.cachedQRTime).Seconds()
+		remainingTimeout := c.cachedQR.Timeout - int(elapsed)
+		if remainingTimeout < 0 {
+			remainingTimeout = 0
+		}
+		qr.Timeout = remainingTimeout
+		return &qr, nil
+	}
+
+	// If we're already generating a QR code, wait for it
+	if c.qrGenerating {
+		c.mu.Unlock()
+		// Wait up to 10 seconds for generation to complete
+		for i := 0; i < 100; i++ {
+			time.Sleep(100 * time.Millisecond)
+			c.mu.RLock()
+			if !c.qrGenerating && c.cachedQR != nil {
+				qr := *c.cachedQR
+				c.mu.RUnlock()
+				return &qr, nil
+			}
+			c.mu.RUnlock()
+		}
+		return nil, fmt.Errorf("timeout waiting for QR code generation")
+	}
+
+	// Start generating new QR code
+	c.qrGenerating = true
+	c.mu.Unlock()
+
+	defer func() {
+		c.mu.Lock()
+		c.qrGenerating = false
+		c.mu.Unlock()
+	}()
+
 	qrChan, err := c.GetQRChannel(ctx)
 	if err != nil {
 		return nil, err
@@ -211,6 +260,11 @@ func (c *Client) GetQR(ctx context.Context) (*QRCode, error) {
 		if !ok {
 			return nil, fmt.Errorf("QR channel closed")
 		}
+		// Cache the QR code
+		c.mu.Lock()
+		c.cachedQR = &qr
+		c.cachedQRTime = time.Now()
+		c.mu.Unlock()
 		return &qr, nil
 	case <-ctx.Done():
 		return nil, ctx.Err()
@@ -240,6 +294,7 @@ func (c *Client) Logout(ctx context.Context) error {
 
 	c.mu.Lock()
 	c.connected = false
+	c.cachedQR = nil // Clear cached QR on logout
 	c.mu.Unlock()
 
 	logging.Info("Logged out from WhatsApp")

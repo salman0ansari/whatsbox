@@ -62,6 +62,9 @@ func (c *Client) eventHandler(evt interface{}) {
 		)
 
 	case *events.PairSuccess:
+		c.mu.Lock()
+		c.cachedQR = nil // Clear cached QR on successful login
+		c.mu.Unlock()
 		logging.Info("WhatsApp pairing successful",
 			zap.String("id", v.ID.String()),
 		)
