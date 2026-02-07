@@ -80,9 +80,6 @@ func migrate() error {
 		// Indexes for access_log
 		`CREATE INDEX IF NOT EXISTS idx_access_log_file_id ON access_log(file_id)`,
 		`CREATE INDEX IF NOT EXISTS idx_access_log_created_at ON access_log(created_at)`,
-
-		// Migration: Add file_sha256 column if it doesn't exist
-		`ALTER TABLE files ADD COLUMN file_sha256 BLOB`,
 	}
 
 	for _, migration := range migrations {
@@ -92,6 +89,36 @@ func migrate() error {
 		}
 	}
 
+	// Run column migrations separately with error handling
+	if err := migrateColumns(); err != nil {
+		return err
+	}
+
 	logging.Info("Database migrations completed successfully")
+	return nil
+}
+
+// migrateColumns handles ALTER TABLE migrations that may fail if column already exists
+func migrateColumns() error {
+	// Check if file_sha256 column exists
+	var colCount int
+	err := DB.QueryRow(`SELECT COUNT(*) FROM pragma_table_info('files') WHERE name = 'file_sha256'`).Scan(&colCount)
+	if err != nil {
+		logging.Error("Failed to check if file_sha256 column exists", zap.Error(err))
+		return err
+	}
+
+	if colCount == 0 {
+		// Column doesn't exist, add it
+		_, err = DB.Exec(`ALTER TABLE files ADD COLUMN file_sha256 BLOB`)
+		if err != nil {
+			logging.Error("Failed to add file_sha256 column", zap.Error(err))
+			return err
+		}
+		logging.Info("Added file_sha256 column to files table")
+	} else {
+		logging.Debug("file_sha256 column already exists, skipping migration")
+	}
+
 	return nil
 }
