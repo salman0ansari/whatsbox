@@ -7,3 +7,4 @@ export { Spinner, Loading, type SpinnerProps, type LoadingProps } from './Spinne
 export { Modal, type ModalProps } from './Modal';
 export { Progress, type ProgressProps } from './Progress';
 export { EmptyState, type EmptyStateProps } from './EmptyState';
+export { ThemeToggle, type ThemeToggleProps } from './ThemeToggle';

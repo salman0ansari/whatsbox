@@ -3,6 +3,7 @@ import { LayoutDashboard, Files, Settings, LogOut, Box } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useStatus, useLogoutSession } from '@/hooks/useAdmin';
 import { Button } from '@/components/ui';
+import { ThemeToggle } from '@/components/ui/ThemeToggle';
 
 const navItems = [
   { to: '/admin', icon: LayoutDashboard, label: 'Dashboard', exact: true },
@@ -55,6 +56,12 @@ export function Sidebar() {
 
       {/* Status & Logout */}
       <div className="p-4 border-t border-border space-y-3">
+        {/* Theme Toggle */}
+        <div className="flex items-center justify-between px-3 py-2">
+          <span className="text-sm text-text-secondary">Theme</span>
+          <ThemeToggle size="sm" />
+        </div>
+
         {/* Connection Status */}
         <div className="flex items-center gap-2 px-3 py-2">
           <div

@@ -2,6 +2,7 @@ import { Link } from '@tanstack/react-router';
 import { Box, Settings } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { usePublicStatus } from '@/hooks/useAdmin';
+import { ThemeToggle } from '@/components/ui/ThemeToggle';
 
 export interface HeaderProps {
   showAdminLink?: boolean;
@@ -24,6 +25,9 @@ export function Header({ showAdminLink = true, className }: HeaderProps) {
 
         {/* Right side */}
         <div className="flex items-center gap-4">
+          {/* Theme Toggle */}
+          <ThemeToggle size="sm" />
+
           {/* Connection status */}
           <div className="flex items-center gap-2">
             <div
