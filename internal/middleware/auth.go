@@ -16,9 +16,12 @@ const (
 // AdminAuth creates an admin authentication middleware
 func AdminAuth(cfg *config.Config) fiber.Handler {
 	return func(c *fiber.Ctx) error {
-		// If no admin password is set, skip authentication
+		// If no admin password is set, deny all access
 		if cfg.AdminPassword == "" {
-			return c.Next()
+			return c.Status(fiber.StatusServiceUnavailable).JSON(fiber.Map{
+				"error":   "auth_not_configured",
+				"message": "Admin authentication is not configured. Set ADMIN_PASSWORD environment variable.",
+			})
 		}
 
 		// Get session token from cookie
@@ -144,11 +147,12 @@ func LogoutSession() fiber.Handler {
 // CheckAuth returns the current authentication status
 func CheckAuth(cfg *config.Config) fiber.Handler {
 	return func(c *fiber.Ctx) error {
-		// If no admin password is set, always authenticated
+		// If no admin password is set, authentication is required but not possible
 		if cfg.AdminPassword == "" {
 			return c.JSON(fiber.Map{
-				"authenticated": true,
-				"auth_required": false,
+				"authenticated": false,
+				"auth_required": true,
+				"message":       "Admin authentication is not configured. Set ADMIN_PASSWORD environment variable.",
 			})
 		}
 

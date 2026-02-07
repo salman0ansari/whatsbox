@@ -38,6 +38,12 @@ func main() {
 		zap.String("port", cfg.Port),
 	)
 
+	// Security check: Ensure admin password is configured
+	if cfg.AdminPassword == "" {
+		logging.Warn("SECURITY WARNING: ADMIN_PASSWORD is not set! Admin panel will be inaccessible.")
+		logging.Warn("Please set ADMIN_PASSWORD environment variable to enable admin access.")
+	}
+
 	// Setup database
 	if err := database.Setup(cfg); err != nil {
 		logging.Fatal("Failed to setup database", zap.Error(err))
