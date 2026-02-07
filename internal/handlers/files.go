@@ -363,16 +363,13 @@ func (h *FileHandler) Download(c *fiber.Ctx) error {
 	ctx, cancel := context.WithTimeout(c.Context(), 5*time.Minute)
 	defer cancel()
 
-	// Get correct media type for WhatsApp
-	mediaType := utils.GetMediaType(file.MimeType)
-
 	downloadReq := &whatsapp.DownloadRequest{
 		DirectPath:  file.DirectPath,
 		MediaKey:    file.MediaKey,
 		FileEncHash: file.FileEncHash,
 		FileSHA256:  file.FileSHA256,
 		FileLength:  uint64(file.FileSize),
-		MediaType:   mediaType,
+		MimeType:    file.MimeType,
 	}
 
 	data, err := h.waClient.Download(ctx, downloadReq)

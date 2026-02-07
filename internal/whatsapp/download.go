@@ -4,9 +4,10 @@ import (
 	"context"
 	"fmt"
 	"io"
+	"strings"
 
 	"github.com/salman0ansari/whatsbox/internal/logging"
-	"go.mau.fi/whatsmeow"
+	"go.mau.fi/whatsmeow/proto/waE2E"
 	"go.uber.org/zap"
 )
 
@@ -17,10 +18,10 @@ type DownloadRequest struct {
 	FileEncHash []byte
 	FileSHA256  []byte
 	FileLength  uint64
-	MediaType   whatsmeow.MediaType
+	MimeType    string
 }
 
-// Download downloads a file from WhatsApp servers
+// Download downloads a file from WhatsApp servers using the proper message-based approach
 func (c *Client) Download(ctx context.Context, req *DownloadRequest) ([]byte, error) {
 	if !c.IsConnected() {
 		return nil, fmt.Errorf("not connected to WhatsApp")
@@ -28,22 +29,57 @@ func (c *Client) Download(ctx context.Context, req *DownloadRequest) ([]byte, er
 
 	logging.Debug("Downloading file from WhatsApp",
 		zap.String("direct_path", req.DirectPath),
+		zap.String("mime_type", req.MimeType),
 		zap.Uint64("file_length", req.FileLength),
 	)
 
-	// Get media type string for the download
-	mediaTypeStr := string(req.MediaType)
+	var data []byte
+	var err error
 
-	data, err := c.client.DownloadMediaWithPath(
-		ctx,
-		req.DirectPath,
-		req.FileEncHash,
-		req.FileSHA256,
-		req.MediaKey,
-		int(req.FileLength),
-		req.MediaType,
-		mediaTypeStr,
-	)
+	// Detect media type and download with appropriate message object
+	if isImageType(req.MimeType) {
+		msg := &waE2E.ImageMessage{
+			DirectPath:    &req.DirectPath,
+			MediaKey:      req.MediaKey,
+			Mimetype:      &req.MimeType,
+			FileEncSHA256: req.FileEncHash,
+			FileSHA256:    req.FileSHA256,
+			FileLength:    &req.FileLength,
+		}
+		data, err = c.client.Download(ctx, msg)
+	} else if isVideoType(req.MimeType) {
+		msg := &waE2E.VideoMessage{
+			DirectPath:    &req.DirectPath,
+			MediaKey:      req.MediaKey,
+			Mimetype:      &req.MimeType,
+			FileEncSHA256: req.FileEncHash,
+			FileSHA256:    req.FileSHA256,
+			FileLength:    &req.FileLength,
+		}
+		data, err = c.client.Download(ctx, msg)
+	} else if isAudioType(req.MimeType) {
+		msg := &waE2E.AudioMessage{
+			DirectPath:    &req.DirectPath,
+			MediaKey:      req.MediaKey,
+			Mimetype:      &req.MimeType,
+			FileEncSHA256: req.FileEncHash,
+			FileSHA256:    req.FileSHA256,
+			FileLength:    &req.FileLength,
+		}
+		data, err = c.client.Download(ctx, msg)
+	} else {
+		// Default to document for all other types
+		msg := &waE2E.DocumentMessage{
+			DirectPath:    &req.DirectPath,
+			MediaKey:      req.MediaKey,
+			Mimetype:      &req.MimeType,
+			FileEncSHA256: req.FileEncHash,
+			FileSHA256:    req.FileSHA256,
+			FileLength:    &req.FileLength,
+		}
+		data, err = c.client.Download(ctx, msg)
+	}
+
 	if err != nil {
 		logging.Error("Failed to download from WhatsApp", zap.Error(err))
 		return nil, fmt.Errorf("download failed: %w", err)
@@ -66,4 +102,17 @@ func (c *Client) DownloadToWriter(ctx context.Context, req *DownloadRequest, w i
 
 	_, err = w.Write(data)
 	return err
+}
+
+// Helper functions to detect media types
+func isImageType(mimeType string) bool {
+	return strings.HasPrefix(mimeType, "image/")
+}
+
+func isVideoType(mimeType string) bool {
+	return strings.HasPrefix(mimeType, "video/")
+}
+
+func isAudioType(mimeType string) bool {
+	return strings.HasPrefix(mimeType, "audio/")
 }
