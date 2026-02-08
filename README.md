@@ -13,6 +13,13 @@ A file upload service that uses WhatsApp's media storage infrastructure. Files a
 - **Real-time Stats**: Track uploads, downloads, and bandwidth usage
 - **Background Jobs**: Automatic cleanup of expired files and stale uploads
 
+## Screenshots
+
+### Homepage
+![Homepage](screenshots/homepage.png)
+
+[View all screenshots →](screenshots/)
+
 ## Quick Start
 
 ### Using Docker Compose (Recommended)
